@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# clean up a source code work directory
+
+# TODO: this bloats the .m2 and .gradle directories
+
+if [ $# -ne 1 ]; then
+    exit 1
+fi
+
+workdir=$1
+
+ls $workdir | while read dir; do
+    if [ ! -d $workdir/$dir ]; then
+        continue
+    fi
+
+    pushd $workdir/$dir
+    if [ -f .git ]; then
+        git gc
+        git prune
+    fi
+    if [ -f Makefile ]; then
+        make clean
+    fi
+    if [ -f pom.xml ]; then
+        mvn clean --quiet
+    fi
+    if [ -f gradlew ]; then
+        ./gradlew clean --no-daemon --quiet
+    fi
+    popd
+done
