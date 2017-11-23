@@ -2,7 +2,7 @@
  * Demonstrate Java and Guava Collection overheads.
  *
  * Run with:
- * $ export CLASSPATH=.:$HOME/.m2/repository/com/google/guava/guava/19.0/guava-19.0.jar; javac CollectionOverhead.java && for i in ArrayDeque ArrayList Cache ConcurrentHashMap ConcurrentHashMultiset ConcurrentLinkedDeque ConcurrentSkipListMap ConcurrentSkipListSet HashMap HashMultiset HashSet ImmutableMap ImmutableMultiset ImmutableRangeMap ImmutableSet ImmutableSortedMap ImmutableSortedSet LinkedHashMap LinkedHashMultiset LinkedHashSet LinkedList MapMaker PriorityQueue TreeMap TreeMultiset TreeRangeMap TreeSet; do java CollectionOverhead $i $((8 * 1024 * 1024)) 1 || break; done
+ * $ export CLASSPATH=.:$HOME/.m2/repository/com/google/guava/guava/19.0/guava-19.0.jar; javac CollectionOverhead.java && for i in ArrayDeque ArrayList Cache ConcurrentHashMap ConcurrentHashMultiset ConcurrentLinkedDeque ConcurrentSkipListMap ConcurrentSkipListSet HashMap HashMultiset HashSet ImmutableList ImmutableMap ImmutableMultiset ImmutableRangeMap ImmutableSet ImmutableSortedMap ImmutableSortedSet LinkedHashMap LinkedHashMultiset LinkedHashSet LinkedList MapMaker PriorityQueue TreeMap TreeMultiset TreeRangeMap TreeSet; do java CollectionOverhead $i $((8 * 1024 * 1024)) 1 || break; done
  *
  * ArrayDeque                8
  * ArrayList                 4
@@ -54,6 +54,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ConcurrentHashMultiset;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableRangeMap;
@@ -137,6 +138,8 @@ public final class CollectionOverhead {
             collection = HashMultiset.create(size);
         } else if (type.equals("HashSet")) {
             collection = Sets.newHashSetWithExpectedSize(size);
+        } else if (type.equals("ImmutableList")) {
+            collectionBuilder = ImmutableList.builder();
         } else if (type.equals("ImmutableMap")) {
             mapBuilder = ImmutableMap.builder();
         } else if (type.equals("ImmutableMultiset")) {
