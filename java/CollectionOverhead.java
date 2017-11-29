@@ -2,7 +2,7 @@
  * Demonstrate Java and Guava Collection overheads.
  *
  * Run with:
- * $ export CLASSPATH=.:$HOME/.m2/repository/com/google/guava/guava/19.0/guava-19.0.jar; javac CollectionOverhead.java && for i in ArrayDeque ArrayList Cache ConcurrentHashMap ConcurrentHashMultiset ConcurrentLinkedDeque ConcurrentSkipListMap ConcurrentSkipListSet HashMap HashMultiset HashSet ImmutableList ImmutableMap ImmutableMultiset ImmutableRangeMap ImmutableSet ImmutableSortedMap ImmutableSortedSet LinkedHashMap LinkedHashMultiset LinkedHashSet LinkedList MapMaker PriorityQueue TreeMap TreeMultiset TreeRangeMap TreeSet; do java CollectionOverhead $i $((8 * 1024 * 1024)) 1 || break; done
+ * export CLASSPATH=.:$HOME/.m2/repository/com/google/guava/guava/19.0/guava-19.0.jar; javac CollectionOverhead.java && for i in ArrayDeque ArrayList Cache ConcurrentHashMap ConcurrentHashMultiset ConcurrentLinkedDeque ConcurrentSkipListMap ConcurrentSkipListSet EnumMap EnumSet HashMap HashMultiset HashSet ImmutableList ImmutableMap ImmutableMultiset ImmutableRangeMap ImmutableSet ImmutableSortedMap ImmutableSortedSet LinkedHashMap LinkedHashMultiset LinkedHashSet LinkedList MapMaker PriorityQueue TreeMap TreeMultiset TreeRangeMap TreeSet; do java CollectionOverhead $i $((8 * 1024 * 1024)) 1 || break; done
  *
  * ArrayDeque                8
  * ArrayList                 4
@@ -41,6 +41,8 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.PriorityQueue;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -110,6 +112,8 @@ public final class CollectionOverhead {
     private static Object populateCollection(String type, int size) {
         Collection<Integer> collection = null;
         Map<Integer, Integer> map = null;
+        EnumMap<TestEnum, TestEnum> enumMap = null;
+        EnumSet<TestEnum> enumSet = null;
         ImmutableCollection.Builder<Integer> collectionBuilder = null;
         ImmutableMap.Builder<Integer, Integer> mapBuilder = null;
         RangeMap<Integer, Integer> rangeMap = null;
@@ -132,6 +136,10 @@ public final class CollectionOverhead {
             map = new ConcurrentSkipListMap<>();
         } else if (type.equals("ConcurrentSkipListSet")) {
             collection = new ConcurrentSkipListSet<>();
+        } else if (type.equals("EnumMap")) {
+            enumMap = new EnumMap<>(TestEnum.class);
+        } else if (type.equals("EnumSet")) {
+            enumSet = EnumSet.noneOf(TestEnum.class);
         } else if (type.equals("HashMap")) {
             map = Maps.newHashMapWithExpectedSize(size);
         } else if (type.equals("HashMultiset")) {
@@ -186,6 +194,16 @@ public final class CollectionOverhead {
                 Integer ii = i;
                 map.put(ii, ii);
             }
+        } else if (enumMap != null) {
+            TestEnum[] values = TestEnum.values();
+            for (int i = 0; i < size && i < values.length; ++i) {
+                enumMap.put(values[i], values[i]);
+            }
+        } else if (enumSet != null) {
+            TestEnum[] values = TestEnum.values();
+            for (int i = 0; i < size && i < values.length; ++i) {
+                enumSet.add(values[i]);
+            }
         } else if (mapBuilder != null) {
             for (int i = 0; i < size; ++i) {
                 Integer ii = i;
@@ -214,6 +232,10 @@ public final class CollectionOverhead {
 
         if (collection != null) {
             return collection;
+        } else if (enumMap != null) {
+            return enumMap;
+        } else if (enumSet != null) {
+            return enumSet;
         } else if (map != null) {
             return map;
         } else if (rangeMap != null) {
@@ -242,5 +264,12 @@ public final class CollectionOverhead {
         } finally {
             is.close();
         }
+    }
+
+    private enum TestEnum {
+        A0, A1, A2, A3,
+        B0, B1, B2, B3,
+        C0, C1, C2, C3,
+        D0, D1, D2, D3;
     }
 }
