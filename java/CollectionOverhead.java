@@ -95,15 +95,11 @@ public final class CollectionOverhead {
 
         String output = runCommand(new String[] {
                 "sh", "-c", "jmap -histo:live $PPID" +
-                "| awk '$4 !~ /java.lang.Integer/ && $1 !~ /Total/{x += $3} END{print x}'"});
-        System.out.printf("%-24s%3d\n", args[0],
-                (long) (Long.parseLong(output.trim()) / (double) collectionSize) / numCollections);
-/*
-        System.out.print(runCommand(new String[] {
-                "sh", "-c", "jmap -histo:live $PPID | head -13"}));
-        System.out.println(runCommand(new String[] {
-                "sh", "-c", "jmap -histo:live $PPID | tail -1"}));
-*/
+                " | awk '$4 !~ /java.lang.Integer/ && $1 !~ /Total/{x += $3} END{print x}'"});
+        long numBytes = Long.parseLong(output.trim());
+        System.out.printf("%-24s%8d%8d\n", args[0],
+                (long) numBytes / numCollections,
+                (long) (numBytes / (double) collectionSize) / numCollections);
 
         // prevent GC of map until after jmap
         Object object = objects;
