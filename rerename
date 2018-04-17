@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# regex rename
+
+set -o errexit
+set -o pipefail
+
+TEST=0
+if [ "$1" = "--test" -o "$1" = "-t" ]
+then
+    TEST=1
+    shift
+fi
+
+regex="$1"
+shift
+
+for old_file
+do
+    new_file=`echo "$old_file" | sed "s$regex"`
+    [ x"$old_file" = x"$new_file" ] && continue
+    if [ $TEST -ne 0 ]
+    then
+        echo mv -i "$old_file" "$new_file"
+    else
+        mv -i "$old_file" "$new_file"
+    fi
+done
