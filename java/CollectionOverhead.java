@@ -86,7 +86,8 @@ public final class CollectionOverhead {
         int collectionSize = Integer.parseInt(args[1], /*radix=*/ 10);
         int numCollections = Integer.parseInt(args[2], /*radix=*/ 10);
 
-        Collection<Object> objects = Lists.newArrayList();
+        Collection<Object> objects = Lists.newArrayListWithCapacity(
+                numCollections);
         for (int i = 0; i < numCollections; ++i) {
             objects.add(populateCollection(args[0], collectionSize));
         }
@@ -177,67 +178,57 @@ public final class CollectionOverhead {
         } else if (type.equals("TreeSet")) {
             collection = Sets.newTreeSet();
         } else {
-            System.out.println("Could not find Collection implementation.");
-            System.exit(1);
+            throw new IllegalStateException("could not find collection: " + type);
         }
 
         if (collection != null) {
             for (int i = 0; i < size; ++i) {
                 collection.add(i);
             }
+            return collection;
         } else if (map != null) {
             for (int i = 0; i < size; ++i) {
                 Integer ii = i;
                 map.put(ii, ii);
             }
+            return map;
         } else if (enumMap != null) {
             TestEnum[] values = TestEnum.values();
             for (int i = 0; i < size && i < values.length; ++i) {
                 enumMap.put(values[i], values[i]);
             }
+            return enumMap;
         } else if (enumSet != null) {
             TestEnum[] values = TestEnum.values();
             for (int i = 0; i < size && i < values.length; ++i) {
                 enumSet.add(values[i]);
             }
+            return enumSet;
         } else if (mapBuilder != null) {
             for (int i = 0; i < size; ++i) {
                 Integer ii = i;
                 mapBuilder.put(ii, ii);
             }
-            map = mapBuilder.build();
-            mapBuilder = null;
+            return mapBuilder.build();
         } else if (collectionBuilder != null) {
             for (int i = 0; i < size; ++i) {
                 collectionBuilder.add(i);
             }
-            collection = collectionBuilder.build();
-            collectionBuilder = null;
+            return collectionBuilder.build();
         } else if (rangeMap != null) {
             for (int i = 0; i < size; ++i) {
                 Integer ii = i;
                 rangeMap.put(Range.closedOpen(ii, i + 1), ii);
             }
+            return rangeMap;
         } else if (rangeMapBuilder != null) {
             for (int i = 0; i < size; ++i) {
                 Integer ii = i;
                 rangeMapBuilder.put(Range.closedOpen(ii, i + 1), ii);
             }
-            rangeMap = rangeMapBuilder.build();
-        }
-
-        if (collection != null) {
-            return collection;
-        } else if (enumMap != null) {
-            return enumMap;
-        } else if (enumSet != null) {
-            return enumSet;
-        } else if (map != null) {
-            return map;
-        } else if (rangeMap != null) {
-            return rangeMap;
+            return rangeMapBuilder.build();
         } else {
-            return null;
+            throw new IllegalStateException("Could not find collection");
         }
     }
 
