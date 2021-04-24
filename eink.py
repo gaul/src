@@ -19,6 +19,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 OPENWEATHER_API_KEY = os.environ["OPENWEATHER_API_KEY"]
 JAPAN_POPULATION = 126_300_000
+HEALTHCARE_VACCINATIONS = "http://www.kantei.go.jp/jp/content/IRYO-vaccination_data.pdf"
+ELDERLY_VACCINATIONS = "http://www.kantei.go.jp/jp/content/KOREI-vaccination_data.pdf"
 
 def get_weather(city_name: str) -> Tuple[float, str]:
     url = "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}".format(city_name, OPENWEATHER_API_KEY)
@@ -52,19 +54,24 @@ def get_all_infections() -> Tuple[str, int]:
         last = current
     return result
 
-def get_all_vacinations() -> List[Tuple[str, int]]:
-    URL = "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/vaccine_sesshujisseki.html"
+def get_all_vacinations(url: str) -> List[Tuple[str, int]]:
     output = subprocess.run(
-            ["bash", "-c", "lynx -dump " + URL + " | grep 202[0-9]/[0-9][0-9]/[0-9][0-9]"],
+            ["bash", "-c", "curl --silent " + url + " | pdftotext -layout - -"],
             capture_output=True, text=True)
     output.check_returncode()
     result = []
     for line in output.stdout.split("\n"):
-        if line == "":
+        if "2021/" in line:
+            date, weekday, total, first, second = line.split()
+        elif "合計" in line:
+            date, total, first, second = line.split()
+            weekday = None
+        else:
             continue
-        date, total, first, second, facilitives = line.split()
-        vaccinations = int(total.replace(",", ""))
-        result += [(date, vaccinations)]
+        total = int(total.replace(",", ""))
+        first = int(first.replace(",", ""))
+        second = int(second.replace(",", ""))
+        result += [(date, first, second)]
     return result
 
 def draw_image() -> Image:
@@ -86,10 +93,10 @@ def draw_image() -> Image:
     japan_infections_yesterday = japan_infections[-1][1]
     japan_infections_week_ago = japan_infections[-8][1]
 
-    japan_vaccinations = get_all_vacinations()
-    japan_vaccinations_yesterday = japan_vaccinations[-2][1]
-    japan_vaccinations_today = japan_vaccinations[-1][1]
-    japan_vaccinations_total = sum(x[1] for x in japan_vaccinations)
+    japan_healthcare_vaccinations = get_all_vacinations(HEALTHCARE_VACCINATIONS)
+    japan_elderly_vaccinations = get_all_vacinations(ELDERLY_VACCINATIONS)
+    japan_vaccinations_today = japan_healthcare_vaccinations[1][1] + japan_elderly_vaccinations[1][1]
+    japan_vaccinations_total = japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1]
 
     image = Image.new("1", (880, 528), 255)
     draw = ImageDraw.Draw(image)
@@ -114,7 +121,7 @@ def draw_image() -> Image:
     draw.text((10, 490), "fetch dates: {}, {}, {}".format(
         tokyo_infections["data"][-1]["diagnosed_date"],
         japan_infections[-1][0],
-        japan_vaccinations[-1][0]),
+        japan_healthcare_vaccinations[1][0]),
         font = font_small)
 
     return image
@@ -145,6 +152,7 @@ def main() -> None:
         # TODO: deinitialize on SIGINT?
     else:
         image = draw_image()
+        # TODO: require -o out.bmp
         image.save("1.bmp", "BMP")
 
 if __name__ == "__main__":
