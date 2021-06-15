@@ -19,8 +19,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 OPENWEATHER_API_KEY = os.environ["OPENWEATHER_API_KEY"]
 JAPAN_POPULATION = 126_300_000
-HEALTHCARE_VACCINATIONS = "http://www.kantei.go.jp/jp/content/IRYO-vaccination_data.pdf"
-ELDERLY_VACCINATIONS = "http://www.kantei.go.jp/jp/content/KOREI-vaccination_data.pdf"
+HEALTHCARE_VACCINATIONS = "http://www.kantei.go.jp/jp/content/IRYO-vaccination_data2.pdf"
+ELDERLY_VACCINATIONS = "http://www.kantei.go.jp/jp/content/KOREI-vaccination_data2.pdf"
 
 def get_weather(city_name: str) -> Tuple[float, str]:
     url = "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}".format(city_name, OPENWEATHER_API_KEY)
@@ -62,16 +62,24 @@ def get_all_vacinations(url: str) -> List[Tuple[str, int]]:
     result = []
     for line in output.stdout.split("\n"):
         if "2021/" in line:
-            date, weekday, total, first, second = line.split()
+            parts = line.split()
+            if len(parts) == 7:
+                date, weekday, total, pfizer_first, moderna_first, pfizer_second, moderna_second = parts
+            else:
+                date, weekday, total, pfizer_first, pfizer_second = parts
+                moderna_first = "0"
+                moderna_second = "0"
         elif "合計" in line:
-            date, total, first, second = line.split()
+            date, total, pfizer_first, moderna_first, pfizer_second, moderna_second = line.split()
             weekday = None
         else:
             continue
         total = int(total.replace(",", ""))
-        first = int(first.replace(",", ""))
-        second = int(second.replace(",", ""))
-        result += [(date, first, second)]
+        pfizer_first = int(pfizer_first.replace(",", ""))
+        pfizer_second = int(pfizer_second.replace(",", ""))
+        moderna_first = int(moderna_first.replace(",", ""))
+        moderna_second = int(moderna_second.replace(",", ""))
+        result += [(date, pfizer_first + moderna_first, pfizer_second + moderna_second)]
     return result
 
 def draw_image() -> Image:
@@ -95,8 +103,12 @@ def draw_image() -> Image:
 
     japan_healthcare_vaccinations = get_all_vacinations(HEALTHCARE_VACCINATIONS)
     japan_elderly_vaccinations = get_all_vacinations(ELDERLY_VACCINATIONS)
-    japan_vaccinations_today = japan_healthcare_vaccinations[1][1] + japan_elderly_vaccinations[1][1]
-    japan_vaccinations_total = japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1]
+    japan_both_vaccinations_today = (
+            japan_healthcare_vaccinations[1][1] +
+            japan_healthcare_vaccinations[1][2] +
+            japan_elderly_vaccinations[1][1] +
+            japan_elderly_vaccinations[1][2])
+    japan_first_vaccinations_total = japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1]
 
     image = Image.new("1", (880, 528), 255)
     draw = ImageDraw.Draw(image)
@@ -110,13 +122,13 @@ def draw_image() -> Image:
 {}°C {}
 {:,} Japan new inf., {:+,} w/w
 {:,} Tokyo new inf., {:+,} w/w
-{:.2f}% Japan vac., {:+,} d/d
+{:.1f}% Japan 1st vac., {:+,}k d/d
 """.format(
     los_angeles_time, phoenix_time,
     int(tokyo_temperature), tokyo_weather,
     japan_infections_yesterday, japan_infections_yesterday - japan_infections_week_ago,
     tokyo_infections_yesterday, tokyo_infections_yesterday - tokyo_infections_week_ago,
-    japan_vaccinations_total / JAPAN_POPULATION * 100.0, japan_vaccinations_today),
+    japan_first_vaccinations_total / JAPAN_POPULATION * 100.0, japan_both_vaccinations_today // 1000),
     font = font, spacing = 12)
     draw.text((10, 490), "fetch dates: {}, {}, {}".format(
         tokyo_infections["data"][-1]["diagnosed_date"],
@@ -138,14 +150,15 @@ def main() -> None:
             epd.Clear()
             try:
                 image = draw_image()
-                epd.display(epd.getbuffer(image))  # TODO: pull out of try block?
-
-                # TODO: what if we draw a red image then don't overwrite it?
-                # TODO: better to just use write_bytes2?
-                #epd.display(epd.getbuffer(image), epd.getbuffer(image))
-                #epd.display(epd.getbuffer(image_blank), epd.getbuffer(image))
             except (AssertionError, requests.exceptions.ConnectionError, subprocess.CalledProcessError) as e:
                 logging.error(e)
+
+            epd.display(epd.getbuffer(image))
+
+            # TODO: what if we draw a red image then don't overwrite it?
+            # TODO: better to just use write_bytes2?
+            #epd.display(epd.getbuffer(image), epd.getbuffer(image))
+            #epd.display(epd.getbuffer(image_blank), epd.getbuffer(image))
 
             # sleep until next 15 minute increment
             time.sleep((15 * 60) - (time.time() % (15 * 60)))
