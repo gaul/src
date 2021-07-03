@@ -19,8 +19,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 OPENWEATHER_API_KEY = os.environ["OPENWEATHER_API_KEY"]
 JAPAN_POPULATION = 126_300_000
-HEALTHCARE_VACCINATIONS = "http://www.kantei.go.jp/jp/content/IRYO-vaccination_data2.pdf"
-ELDERLY_VACCINATIONS = "http://www.kantei.go.jp/jp/content/KOREI-vaccination_data2.pdf"
+HEALTHCARE_VACCINATIONS = "http://www.kantei.go.jp/jp/content/IRYO-vaccination_data3.pdf"
+ELDERLY_VACCINATIONS = "http://www.kantei.go.jp/jp/content/KOREI-vaccination_data3.pdf"
 
 def get_weather(city_name: str) -> Tuple[float, str]:
     url = "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}".format(city_name, OPENWEATHER_API_KEY)
@@ -61,16 +61,11 @@ def get_all_vacinations(url: str) -> List[Tuple[str, int]]:
     output.check_returncode()
     result = []
     for line in output.stdout.split("\n"):
-        if "2021/" in line:
-            parts = line.split()
-            if len(parts) == 7:
-                date, weekday, total, pfizer_first, moderna_first, pfizer_second, moderna_second = parts
-            else:
-                date, weekday, total, pfizer_first, pfizer_second = parts
-                moderna_first = "0"
-                moderna_second = "0"
+        parts = line.split()
+        if "2021/" in line and len(parts) >= 7:
+            date, weekday, total, pfizer_first, moderna_first, pfizer_second, moderna_second = parts[:7]
         elif "合計" in line:
-            date, total, pfizer_first, moderna_first, pfizer_second, moderna_second = line.split()
+            date, total, pfizer_first, moderna_first, pfizer_second, moderna_second = parts[:6]
             weekday = None
         else:
             continue
@@ -103,12 +98,8 @@ def draw_image() -> Image:
 
     japan_healthcare_vaccinations = get_all_vacinations(HEALTHCARE_VACCINATIONS)
     japan_elderly_vaccinations = get_all_vacinations(ELDERLY_VACCINATIONS)
-    japan_both_vaccinations_today = (
-            japan_healthcare_vaccinations[1][1] +
-            japan_healthcare_vaccinations[1][2] +
-            japan_elderly_vaccinations[1][1] +
-            japan_elderly_vaccinations[1][2])
     japan_first_vaccinations_total = japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1]
+    japan_second_vaccinations_total = japan_healthcare_vaccinations[0][2] + japan_elderly_vaccinations[0][2]
 
     image = Image.new("1", (880, 528), 255)
     draw = ImageDraw.Draw(image)
@@ -122,13 +113,14 @@ def draw_image() -> Image:
 {}°C {}
 {:,} Japan new inf., {:+,} w/w
 {:,} Tokyo new inf., {:+,} w/w
-{:.1f}% Japan 1st vac., {:+,}k d/d
+{:.1f}% 1st vac., {:.1f}% 2nd vac.
 """.format(
     los_angeles_time, phoenix_time,
     int(tokyo_temperature), tokyo_weather,
     japan_infections_yesterday, japan_infections_yesterday - japan_infections_week_ago,
     tokyo_infections_yesterday, tokyo_infections_yesterday - tokyo_infections_week_ago,
-    japan_first_vaccinations_total / JAPAN_POPULATION * 100.0, japan_both_vaccinations_today // 1000),
+    japan_first_vaccinations_total / JAPAN_POPULATION * 100.0,
+    japan_second_vaccinations_total / JAPAN_POPULATION * 100.0),
     font = font, spacing = 12)
     draw.text((10, 490), "fetch dates: {}, {}, {}".format(
         tokyo_infections["data"][-1]["diagnosed_date"],
