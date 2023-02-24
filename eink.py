@@ -5,6 +5,8 @@
 # TODO: make functions async: https://requests.readthedocs.io/en/v0.8.3/user/advanced/#asynchronous-requests
 # TODO: need Japanese font
 # TODO: Wanikani integration
+# TODO: humidity
+# TODO: pollen
 
 import datetime
 import os
@@ -21,6 +23,8 @@ OPENWEATHER_API_KEY = os.environ["OPENWEATHER_API_KEY"]
 JAPAN_POPULATION = 126_300_000
 # TODO: HTTPS
 ALL_VACINATIONS = "http://www.kantei.go.jp/jp/content/vaccination_data5.pdf"
+# TODO: set full path for Pi
+DROID_FONT_PATH = "DroidSans.ttf"
 
 def get_weather(city_name: str) -> Tuple[float, str]:
     url = "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}".format(city_name, OPENWEATHER_API_KEY)
@@ -75,6 +79,22 @@ def get_all_vacinations(cmd: str) -> List[Tuple[str, int]]:
         result += [(date, pfizer_first + moderna_first, pfizer_second + moderna_second)]
     return result
 
+def get_workplace_vacinations(cmd: str) -> List[Tuple[str, int]]:
+    output = subprocess.run(cmd, capture_output=True, text=True)
+    output.check_returncode()
+    result = []
+    for line in output.stdout.split("\n"):
+        parts = line.split()
+        if "2021/" in line and len(parts) >= 7:
+            date1, weekday1, date2, weekday2, total, first, second, = parts[:7]
+        else:
+            continue
+        total = int(total.replace(",", ""))
+        first = int(first.replace(",", ""))
+        second = int(second.replace(",", ""))
+        result += [(date1, first, second)]
+    return result
+
 def draw_image() -> Image:
     time_fmt = "%I:%M %p"
     time_zone_fmt = "%I:%M %p %Z"
@@ -95,13 +115,21 @@ def draw_image() -> Image:
     japan_infections_week_ago = japan_infections[-8][1]
 
     try:
+        raise Exception()
+        # TODO: use single curl command
         japan_healthcare_vaccinations = get_all_vacinations(
                 ["bash", "-c", "curl --silent " + ALL_VACINATIONS + " | pdftotext -f 3 -l 3 -layout - -"])
         japan_elderly_vaccinations = get_all_vacinations(
                 ["bash", "-c", "curl --silent " + ALL_VACINATIONS + " | pdftotext -f 2 -l 2 -layout - -"])
-        japan_first_vaccinations_total = japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1]
-        japan_second_vaccinations_total = japan_healthcare_vaccinations[0][2] + japan_elderly_vaccinations[0][2]
-        japan_vaccinations_date = japan_healthcare_vaccinations[1][0]
+        japan_workplace_vaccinations = get_workplace_vacinations(
+                ["bash", "-c", "curl --silent " + ALL_VACINATIONS + " | pdftotext -f 4 -l 4 -layout - -"])
+        duplicate_vaccinations = get_workplace_vacinations(
+                ["bash", "-c", "curl --silent " + ALL_VACINATIONS + " | pdftotext -f 5 -l 5 -layout - -"])
+        japan_first_vaccinations_total = (
+                japan_healthcare_vaccinations[0][1] + japan_elderly_vaccinations[0][1] + japan_workplace_vaccinations[0][1] - duplicate_vaccinations[0][1])
+        japan_second_vaccinations_total = (
+                japan_healthcare_vaccinations[0][2] + japan_elderly_vaccinations[0][2] + japan_workplace_vaccinations[0][2])
+        japan_vaccinations_date = japan_elderly_vaccinations[1][0]
     except:
         japan_healthcare_vaccinations = 0
         japan_elderly_vaccinations = 0
@@ -111,24 +139,24 @@ def draw_image() -> Image:
 
     image = Image.new("1", (880, 528), 255)
     draw = ImageDraw.Draw(image)
-    font_big = ImageFont.truetype("DroidSans.ttf", 144)
-    font = ImageFont.truetype("DroidSans.ttf", 60)
-    font_small = ImageFont.truetype("DroidSans.ttf", 24)
+    font_big = ImageFont.truetype(DROID_FONT_PATH, 144)
+    font = ImageFont.truetype(DROID_FONT_PATH, 60)
+    font_small = ImageFont.truetype(DROID_FONT_PATH, 24)
 
     draw.text((140, 0), tokyo_time, font = font_big)
     draw.multiline_text((10, 140), """\
 {}      {}
 {}°C {}
-{:,} Japan new inf., {:+,} w/w
 {:,} Tokyo new inf., {:+,} w/w
-{:.1f}% 1st vac., {:.1f}% 2nd vac.
 """.format(
+#{:,} Japan new inf., {:+,} w/w
+#{:.1f}% 1st vac., {:.1f}% 2nd vac.
     los_angeles_time, phoenix_time,
     int(tokyo_temperature), tokyo_weather,
-    japan_infections_yesterday, japan_infections_yesterday - japan_infections_week_ago,
-    tokyo_infections_yesterday, tokyo_infections_yesterday - tokyo_infections_week_ago,
-    japan_first_vaccinations_total / JAPAN_POPULATION * 100.0,
-    japan_second_vaccinations_total / JAPAN_POPULATION * 100.0),
+    #japan_infections_yesterday, japan_infections_yesterday - japan_infections_week_ago,
+    tokyo_infections_yesterday, tokyo_infections_yesterday - tokyo_infections_week_ago),
+    #japan_first_vaccinations_total / JAPAN_POPULATION * 100.0,
+    #japan_second_vaccinations_total / JAPAN_POPULATION * 100.0),
     font = font, spacing = 12)
     draw.text((10, 490), "fetch dates: {}, {}, {}".format(
         tokyo_infections["data"][-1]["diagnosed_date"],
@@ -152,6 +180,8 @@ def main() -> None:
                 image = draw_image()
             except (AssertionError, requests.exceptions.ConnectionError, subprocess.CalledProcessError) as e:
                 logging.error(e)
+                time.sleep((15 * 60) - (time.time() % (15 * 60)))
+                continue
 
             epd.display(epd.getbuffer(image))
 
