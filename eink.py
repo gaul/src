@@ -5,7 +5,6 @@
 # TODO: make functions async: https://requests.readthedocs.io/en/v0.8.3/user/advanced/#asynchronous-requests
 # TODO: need Japanese font
 # TODO: Wanikani integration
-# TODO: humidity
 # TODO: pollen
 
 import datetime
@@ -104,6 +103,7 @@ def draw_image() -> Image:
 
     output = get_weather("Tokyo")
     tokyo_temperature = output["main"]["temp"] - 273.15
+    tokyo_humidity = output["main"]["humidity"]
     tokyo_weather = output["weather"][0]["description"]
 
     tokyo_infections = get_tokyo_infections()
@@ -147,12 +147,14 @@ def draw_image() -> Image:
     draw.multiline_text((10, 140), """\
 {}      {}
 {}°C {}
+{}% humidity
 {:,} Tokyo new inf., {:+,} w/w
 """.format(
 #{:,} Japan new inf., {:+,} w/w
 #{:.1f}% 1st vac., {:.1f}% 2nd vac.
     los_angeles_time, phoenix_time,
     int(tokyo_temperature), tokyo_weather,
+    int(tokyo_humidity),
     #japan_infections_yesterday, japan_infections_yesterday - japan_infections_week_ago,
     tokyo_infections_yesterday, tokyo_infections_yesterday - tokyo_infections_week_ago),
     #japan_first_vaccinations_total / JAPAN_POPULATION * 100.0,
