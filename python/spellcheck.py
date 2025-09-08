@@ -10,7 +10,7 @@ HTTP, malloc, etc.  Users may want to pipe output through
 "sort | uniq -c | sort -n" to find unusual and often incorrect spellings.
 '''
 
-__VERSION__ = 20180615
+__VERSION__ = 20250907
 
 # TODO: allow compoundwords?
 # TODO: bundle standard programming dictionary
@@ -74,13 +74,12 @@ def parse_stream(stream, tokenize_all):
             yield string
         string = ''
 
-translations = string.maketrans(string.ascii_uppercase, string.ascii_lowercase)
-deletions = string.digits + string.punctuation + string.whitespace
+translations = str.maketrans(string.ascii_uppercase, string.ascii_lowercase, string.digits + string.punctuation + string.whitespace)
 
 def populate_dictionary(filename, dictionary):
     with open(filename, 'r') as f:
         for word in f:
-            dictionary.add(word.translate(translations, deletions))
+            dictionary.add(word.translate(translations))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -102,7 +101,7 @@ def main():
             for my_string in parse_stream(f, args.tokenize_all):
                 # TODO: second parser!
                 for word in re.split("[^A-Za-z]", my_string):
-                    cword = word.translate(translations, deletions)
+                    cword = word.translate(translations)
                     if cword == '':
                         continue
                     if cword not in all_dictionaries:
