@@ -25,13 +25,13 @@ def remove_needles_test(haystack, needles, expected):
     assert actual == expected
 
 def main():
-    remove_needles_test('', '', '');
-    remove_needles_test('a', '', 'a');
-    remove_needles_test('', 'a', '');
-    remove_needles_test('ab', 'b', 'a');
-    remove_needles_test('bab', 'b', 'a');
-    remove_needles_test('bab', 'a', 'bb');
-    remove_needles_test('abcdabcd', 'acec', 'bdbd');
+    remove_needles_test('', '', '')
+    remove_needles_test('a', '', 'a')
+    remove_needles_test('', 'a', '')
+    remove_needles_test('ab', 'b', 'a')
+    remove_needles_test('bab', 'b', 'a')
+    remove_needles_test('bab', 'a', 'bb')
+    remove_needles_test('abcdabcd', 'acec', 'bdbd')
 
 if __name__ == '__main__':
     main()
